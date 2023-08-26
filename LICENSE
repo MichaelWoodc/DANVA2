@@ -1,21 +1,53 @@
-MIT License
+Licensing Information
 
-Copyright (c) 2023 Danva2
+====================================================================
+Python:
+--------------------------------------------------------------------
+Python is a dynamic programming language widely used for various purposes.
+The history and licensing information for Python can be found at:
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Python History and License - Python 3.11.4 Documentation
+https://docs.python.org/3/license.html
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+====================================================================
+Pygame:
+--------------------------------------------------------------------
+Pygame is a set of Python modules designed for writing video games. 
+Pygame is distributed under the GNU Lesser General Public License (LGPL) version 3.0. 
+You can find more information about the GNU LGPL v3.0 here:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+GNU Lesser General Public License v3.0 - GNU Project - Free Software Foundation
+https://www.gnu.org/licenses/lgpl-3.0.html
+
+====================================================================
+pygame_menu:
+--------------------------------------------------------------------
+pygame_menu is a library for creating graphical user interfaces for video games. 
+pygame_menu is distributed under the MIT License. You can find more information about the MIT License here:
+
+The MIT License - Open Source Initiative
+https://opensource.org/licenses/MIT
+
+====================================================================
+Pillow:
+--------------------------------------------------------------------
+Pillow is a library for image processing in Python and is used for image creation in PDFs.
+Pillow is distributed under the HPND License. You can find more information about the HPND License in the provided LICENSE file.
+
+Pillow (HPND License)
+https://raw.githubusercontent.com/python-pillow/Pillow/main/LICENSE
+
+====================================================================
+fillpdf:
+--------------------------------------------------------------------
+fillpdf is a library that facilitates data transfer from Python to PDFs.
+fillpdf is distributed under the MIT License. 
+You can find more information about the MIT License in the provided LICENSE file.
+
+fillpdf (MIT License)
+https://github.com/t-houssian/fillpdf/blob/main/LICENSE
+
+====================================================================
+
+DANVAII is a software program that utilizes the aforementioned libraries for various functionalities. 
+By using the DANVAII, you agree to comply with the terms and conditions specified in the licenses of the libraries used.
