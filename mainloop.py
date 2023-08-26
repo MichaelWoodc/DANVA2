@@ -1,70 +1,59 @@
 import pygame
 import pygame_menu
-import sys
 import time
 import csv
 import os
-import pygame_widgets
-from pygame_widgets.button import ButtonArray
 from PIL import Image, ImageDraw, ImageFont
 from fillpdf import fillpdfs
+from typing import Tuple
 
-import ctypes
 
-if not ctypes.windll.shell32.IsUserAnAdmin():
-    print('Not enough priviledge, restarting...')
-    import sys
-    ctypes.windll.shell32.ShellExecuteW(
-        None, 'runas', sys.executable, ' '.join(sys.argv), None, None)
-else:
-    print('Elevated privilege acquired')
-
-# Temporary definitions to troubleshoot file etc. TODO: fix these
 expInfo = {}
-
-expInfo['date'] = 'Date'
-
-
+expInfo['date'] = time.strftime(("%Y_%m_%d-%H_%M"))
 os.environ["SDL_VIDEO_CENTERED"] = "1"
-# Set up Pygame
-padding = 100
 pygame.init()
 pygame.font.init() # you have to call this at the start if you want to use the module
 clock = pygame.time.Clock()
-
+padding = 100
 # Setup the display
 surface = pygame.display.set_mode()
 displayX, displayY = surface.get_size()
-surface = pygame.display.set_mode((displayX-10, displayY-10),pygame.RESIZABLE,display=0)
+surface = pygame.display.set_mode((0,0),pygame.FULLSCREEN)# (displayX-10, displayY-10),pygame.RESIZABLE,display=0)
 x, y = surface.get_size()
 surfaceRectangle = surface.get_rect()
 
 ## Let's set up everything for the text
-font1 = pygame.font.Font(pygame.font.match_font('arial'), 50)
-font2 = pygame.font.Font(pygame.font.match_font('impact'), 55)
-my_font = pygame.font.Font('freesansbold.ttf', 50)
+font1 = pygame.font.Font(pygame.font.match_font('sans'), 50)
+font2 = pygame.font.Font(pygame.font.match_font('sans.bold'), 70)
+my_font = pygame.font.Font('freesansbold.ttf', 55)
 fontslist=[font1,font1,font1,font1,font1]
 black = (0,0,0)
 textTopPadding = 200
 menuPadding = 100 # value in pixels
+background_color = (200,200,200)
 
 
-### Boolean Values go here ###
+### Boolean Values go here ###  TODO: move all boolean values here
 textDrawn = False
 run = True
 stimShow = False
 displayStimuli = False
 showInstructions = False
 stimClear = False
-mainMenuShow = True
+displayMainMenu = True
+stimuliPlayed = False
+acceptAnswer = False
+audioStarted = False
+volumeAdjusted = False
+waitForVolumeSet = True
+display_buttons = False
 
 ## Here's how we work with our time stuff
-# currentTime = pygame.time.get_ticks()
 trialDict = {}
 trialResponses = {}
 dictIndex = 0
 trialIndex = 0
-danvasubtest = 'Adult' # TODO: make this dependent on selection from menu
+danvasubtest = 'Adult' # The default test if no selection is made, gets altered when drop select is changed
 data_dict = {}
 stimsList = {}
 correctAnswers = {}
@@ -78,14 +67,12 @@ intensityOfAnswer = ''
 correctAnswerForString = ''
 currentAnswer = 0
 
-# This is a begin experiment comment in the code section of the readymessage section
 highIntensityErrors = 0
 lowIntensityErrors = 0
 errorList = []
 skippedErrors = 0
 errorsByMisjudgement = 0
 totalErrors = 0
-totalerrors = 0
 happyHighIntensityErrors = 0
 happyLowIntensityErrors = 0
 sadHighIntensityErrors = 0
@@ -121,9 +108,14 @@ femaleSadErrors = 0
 femaleAngryErrors = 0
 femaleFearfulErrors = 0
 femaleTotalErrors = 0
+stimuliEndTime = 0
 
 dictionaryloop = 0
 dictionaryloop2 = 0
+
+stimuliStart = 0
+displayTime = 2
+stimuliEndTime = 1
 # This is to set the number of the trial for scoring the right data
 
 dictionarydefinitions = ["participant","age","skippedErrors","totalErrors","totalerrors","happyHighIntensityErrors","happyLowIntensityErrors",
@@ -138,25 +130,41 @@ dictionarydefinitions = ["participant","age","skippedErrors","totalErrors","tota
                          "maleSadErrors","maleAngryErrors","maleFearfulErrors","maleTotalErrors",
                          "femaleHappyErrors","femaleSadErrors","femaleAngryErrors","femaleFearfulErrors","femaleTotalErrors",
                          "totalErrors1","totalErrors2","happyErrors2","sadErrors2","angryErrors2","fearfulErrors2",]
-# this is a comment "before experiment"
 
-file = ('data/adult.csv')
-with open(file, newline='') as csvfile:
-    trialSetupConditions = csv.DictReader(csvfile)
-    # trialConditions = csv.reader(csvfile, delimiter=',', quotechar='|')
-    for lines in trialSetupConditions:
-        trialDict[dictIndex] = (lines)
-        dictIndex = dictIndex + 1
-        
-print (trialDict)
+
+file = ('src/stimFiles/adult.csv')
+def testConditions(testIndex):
+    global dictIndex, file, danvasubtest
+    if testIndex == 0:
+        file = ('src/stimFiles/'+ 'adultFaces.csv')
+        danvasubtest = 'Adult Faces'
+    if testIndex == 1:
+        file = ('src/stimFiles/'+ 'adultPostures.csv')
+        danvasubtest = 'Adult Postures'
+    if testIndex == 2:
+        file = ('src/stimFiles/'+ 'childFaces.csv')
+        danvasubtest = 'Child Faces'
+    if testIndex == 3:
+        file = ('src/stimFiles/'+ 'adultVoices.csv')
+        danvasubtest = 'Adult Voices'
+    if testIndex == 4:
+        file = ('src/stimFiles/'+ 'childVoices.csv')
+        danvasubtest = 'Child Voices'
+
+    with open(file, newline='') as csvfile:
+        trialSetupConditions = csv.DictReader(csvfile)
+        for lines in trialSetupConditions:
+            trialDict[dictIndex] = (lines)
+            dictIndex = dictIndex + 1
+            
+testConditions(0)
 
 def showStim(showStim):
+    
     global displayStimuli, stimShow
     if showStim == True:
         displayStimuli = True
-        #print('ShowStim is' + str(stimShow))
         
-    
 def drawText(surface, text, color, rect, font, aa=False, bkg=None):
     global textDrawn
     rect = rect
@@ -185,132 +193,222 @@ def drawText(surface, text, color, rect, font, aa=False, bkg=None):
         y += fontHeight + lineSpacing
         # remove the text we just blitted
         text = text[i:]
-    # textDrawn = True
     return text
 
-def printClicked(emotion):
-    # print(emotion)
-    pass
+def displayCredits():
+    surface.fill(background_color)
+    textbox = ((surfaceRectangle[0]+padding),(surfaceRectangle[1]+textTopPadding),(surfaceRectangle[2]-padding*2),(surfaceRectangle[2]-padding))
+    credits = "Program Development by: Michael Woodcock & Dr. Virginia Wickline, 2023 Georgia Southern University"
+    drawText(surface, credits, black, textbox, my_font)
+    pygame.display.flip()
+    time.sleep(3)
     
-def colorClickedButton(button):
-    global fontslist # this is so we can alter the list outside this function
-    for index, item in enumerate(fontslist):
-        fontslist[index] = font1
-    fontslist[button - 1] = font2 # we must subtract 1 since we changed the button numbers for continue to be 0
-    
-    if button == 0:
+    surface.fill(background_color)
+    credits2 = "Danva Stimuli used with permission from: Steve Nowicki, Emory University (see Nowicki & Carton, 1994)"
+    drawText(surface, credits2, black, textbox, my_font)
+    pygame.display.update()
+    time.sleep(3)
+
+displayCredits()
+
+# Colors
+white = (255, 255, 255)
+black = (0, 0, 0)
+
+# Fonts
+font_size = int(y / 20)
+font1 = pygame.font.Font(None, font_size)
+font2 = pygame.font.Font(None, font_size + 20)  # Larger font for selected button
+
+# Button information
+button_labels = ["Happy", "Sad", "Angry", "Fearful", "Continue"]
+button_count = len(button_labels)
+button_padding = int(y / 15)
+button_width = int((x - button_padding * (button_count + 1)) / button_count)
+button_height = int(y / 15)
+
+# Store button rects and fonts
+button_rects = []
+fontslist = [font1] * button_count
+
+# Initialize button rects
+def initialize_button_rects():
+    button_rects.clear()
+    for i in range(button_count):
+        button_rects.append(pygame.Rect(button_padding * (i + 1) + button_width * i, y - button_height - button_padding, button_width, button_height))
+
+initialize_button_rects()
+
+def draw_buttons():
+    # surface.fill(white)
+    for i, rect in enumerate(button_rects):
+        # Draw button border
+        border_rect = pygame.Rect(rect.left - 2, rect.top - 2, rect.width + 4, rect.height + 4)
+        pygame.draw.rect(surface, black, border_rect)
+        
+        pygame.draw.rect(surface, background_color, rect)  # Button inside
+        text = fontslist[i].render(button_labels[i], True, black)  # Black text
+        text_rect = text.get_rect(center=rect.center)
+        surface.blit(text, text_rect)
+
+def handleClickedButton(button):
+    global currentAnswer, trialIndex, fontslist, stimuliPlayed, stimuliEndTime, stimuliStart, audioStarted, acceptAnswer
+    if button == 4:
+        showStim(True)
+        print('Clicked continue!')
+        if acceptAnswer == False:
+            print('Unable to accept answer at this time, please wait')
+            return
+        trialDict[trialIndex]['response'] = str(currentAnswer)
+        trialIndex = trialIndex + 1 # update trial index
+        currentAnswer = 0
         fontslist[button] = font1
         for index, item in enumerate(fontslist):
             fontslist[index] = font1
-
-def handleClickedButton(button):
-    global currentAnswer
-    # some counters are: trialIndex 
-    global trialIndex
-    colorClickedButton(button)
-    if button == 0:
-        trialDict[trialIndex]['response'] = str(currentAnswer)
-        print(currentAnswer)
-        currentAnswer = 0
-        print(currentAnswer)
-        trialIndex = trialIndex + 1 # update trial index
+        stimuliPlayed = False
+        stimuliStart = pygame.time.get_ticks()
+        stimuliEndTime = stimuliStart + (displayTime * 1000)
+        audioStarted = False
+        print(trialIndex)
+        # Handle continue button
+        for i in range(button_count):
+            fontslist[i] = font1
+        pass
     else:
-        currentAnswer = button
-        
-    
-# Creates an array of buttons
-def drawButtons():
-    global displayStimuli
-    ButtonArray(
-    # Mandatory Parameters
-    surface,  # Surface to place button array on
-    x/9,  # X-coordinate
-    y-(y/8),  # Y-coordinate
-    x*(8/10),  # Width
-    100,  # Height
-    (5, 1),  # Shape: 2 buttons wide, 2 buttons tall
-    border=10,  # Distance between buttons and edge of array
-    texts=('Happy','Sad','Angry','Fearful','Continue'),  # Sets the texts of each button (counts left to right then top to bottom)
-    # When clicked, print number
-    fonts=(tuple(fontslist)),
-    onClicks=((lambda: (printClicked('Happy'), handleClickedButton(1), ), lambda: (printClicked('Sad'),handleClickedButton(2)), lambda: (printClicked('Angry'), handleClickedButton(3)), lambda: (printClicked('Fearful'), handleClickedButton(4)),lambda: (printClicked('Continue'),handleClickedButton(0),showStim(True)))),
-    colour = (255,255,255))
+        currentAnswer = button + 1
+        print(currentAnswer)
+        for i in range(button_count):
+            fontslist[i] = font1
+        fontslist[button] = font2
     
 def displayInstructions():
-    # surface.fill((200,200,200))
+    surface.fill((background_color))
     textbox = ((surfaceRectangle[0]+padding),(surfaceRectangle[1]+textTopPadding),(surfaceRectangle[2]-padding*2),(surfaceRectangle[2]-padding))
-    instructions = "I am going to show you some people's faces and I want you to tell me how they feel. I want you to tell me if they are happy, sad, angry, or fearful (scared). Let's get started. Click anywhere to begin. (Esc will quit)"
+    instructions = "I am going to show you some people's faces or play a voice clip and I want you to tell me how they feel. I want you to tell me if they are happy, sad, angry, or fearful (scared). Let's get started. Click anywhere to begin. (Esc will quit)"
     drawText(surface, instructions, black, textbox, my_font)
-    # pygame.display.flip()
+    
     waitForStart()
-    # run_the_game()
+    
 def displayUpdate(clear = 0):
+    global events
     if clear == 0:
-        events = pygame.event.get()
-        pygame_widgets.update(events)  # Call once every loop to allow widgets to render and listen
+        # events = pygame.event.get()
         pygame.display.update()
     else:
-        surface.fill((200, 200, 200))
-        events = pygame.event.get()
-        pygame_widgets.update(events)
+        surface.fill((background_color))
         pygame.display.update()
     
 def waitForStart():
-    global showInstructions, stimShow, displayStimuli
-    # pygame.display.update()
-    # pygame.display.flip()
-    # time.sleep(.3)
-    # display_stimuli()
-    # drawButtons()
+    global showInstructions, stimShow, displayStimuli, stimuliStart, stimuliEndTime
     waitingForStart = True
     while waitingForStart:        
-        events = pygame.event.get()
-        pygame_widgets.update(events)  # Call once every loop to allow widgets to render and listen
-        pygame.display.update()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                # stop here to debug with blit commands 
-                # it will deactivate the pygame library
-                pygame.quit()
-                quit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    exit()
-                else:
-                    showInstructions = True
-                    stimShow = True
-            if pygame.mouse.get_pressed()[0]:
-                print("click!")
+        events = pygame.event.poll()
+        pygame.display.update()        
+
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            quit()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                exit()
+            else:
                 showInstructions = True
                 stimShow = True
-                waitingForStart = False
-                surface.fill((200,200,200))
-                pygame.display.flip()
-                pygame.display.update()
-                displayStimuli = True
-                pass
+                    
+        if pygame.mouse.get_pressed()[0]:
+            showInstructions = True
+            stimShow = True
+            waitingForStart = False
+            surface.fill(background_color)
+            # pygame.display.flip() # TEST DISABLE THIS
+            # pygame.display.update()
+            displayStimuli = True
+            stimuliStart = pygame.time.get_ticks()
+            stimuliEndTime = stimuliStart + (displayTime * 1000)
+            surface.fill((background_color))
+            pass
+        
+        
+        # for event in events: 
+        #     if event.type == pygame.QUIT:
+        #         pygame.quit()
+        #         quit()
+        #     elif event.type == pygame.KEYDOWN:
+        #         if event.key == pygame.K_ESCAPE:
+        #             exit()
+        #         else:
+        #             showInstructions = True
+        #             stimShow = True
+                    
+        #     if pygame.mouse.get_pressed()[0]:
+        #         showInstructions = True
+        #         stimShow = True
+        #         waitingForStart = False
+        #         surface.fill(background_color)
+        #         # pygame.display.flip() # TEST DISABLE THIS
+        #         # pygame.display.update()
+        #         displayStimuli = True
+        #         stimuliStart = pygame.time.get_ticks()
+        #         stimuliEndTime = stimuliStart + (displayTime * 1000)
+        #         pass
 
-def display_stimuli(displayTime,stimuliStart,stimuliEndTime,currentTime):
-    global mainMenuShow
-    mainMenuShow = False
-    global trialIndex
+def displayAudioAdjustmentScreen():
+    global waitForVolumeSet
+    audioFile = 'src/stimFiles/other/adjustvolume.mp3'
+    pygame.mixer.music.load(audioFile)
+    pygame.mixer.music.play(-1)
+
+    while waitForVolumeSet:
+        surface.fill(background_color)
+        textbox = ((displayX/2 - 600 ),(displayY/2 - 200 ),(displayX/2 + 400 ),(displayY/2 + 200 ))
+        message = "Please adjust your volume until you can hear the audio file clearly.  Double click anywhere when completed to continue."
+        drawText(surface, message, black, textbox, my_font)
+        pygame.display.update()
+        if waitForVolumeSet == False:
+            audioFile = 'src/stimFiles/other/adjustvolume.mp3'
+            pygame.mixer.music.load(audioFile)
+            pygame.mixer.music.play(-1)
+        for event in pygame.event.get(): 
+            if pygame.mouse.get_pressed()[0]:
+                waitForVolumeSet = False
+                pygame.mixer.music.play(0)
     
-    print('Got into display stimuli function')
-    global displayStimuli, stimShow
+
+def present_stimuli():
+    global displayMainMenu, stimuliPlayed, currentAnswer, trialIndex, displayStimuli, stimShow, stimuliEndTime, acceptAnswer, display_buttons
+    displayMainMenu = False
+    surface.fill((background_color))
+    if int(trialIndex) >=24:
+        return
     (trialDict[trialIndex]['stimFile'])
-    
+    # currentTime = pygame.time.get_ticks()
+    display_buttons = True
     if displayStimuli == True:
+        currentTime = pygame.time.get_ticks()
+        # acceptAnswer = False
         while currentTime < stimuliEndTime:
+            events = pygame.event.get() #pygame.event.wait()
+            for event in events:
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        print('Is current time less than or equal to stimuli end time?')
+                        print ( currentTime < stimuliEndTime)
+                        for i, rect in enumerate(button_rects):
+                            if rect.collidepoint(event.pos):
+                                print('Clicked number', i)
+                                handleClickedButton(i)
+                                break
+            draw_buttons()
             currentTime = pygame.time.get_ticks()
-            # print('Displaying Stimuli')
+            acceptAnswer = False
+            
             try:
-                print(trialDict[trialIndex]['stimFile'])
-                displayUpdate()
+                #displayUpdate()
                 stimuli = pygame.image.load((trialDict[trialIndex]['stimFile'])).convert() # i did use (file).convert()
                 stimuliWidth = stimuli.get_width()
                 stimuliHeight = stimuli.get_height()
-                
-                    # pygame.display.flip()
                 width, height = surface.get_size()
                 pictureScale = .6
                 # let's make sure we can scale the image according to actual window size.  Note I based
@@ -327,17 +425,28 @@ def display_stimuli(displayTime,stimuliStart,stimuliEndTime,currentTime):
                 pictureXStart = (width/2)-pictureXCenter
                 pictureYStart = (height/2)-pictureYCenter
                 # lets put the picture on the screen
+                # acceptAnswer = True # Edited August 18
+                displayUpdate()
                 surface.blit(pygame.transform.scale(stimuli, (scaledPictureWidth, scaledPictureHeight)), (pictureXStart,pictureYStart))
             except:
-                pass
-        if currentTime >= stimuliEndTime:# and displayStimuli == True:
-            surface.fill((200,200,200))
-            pygame.display.flip()
-            pygame.display.update()
-            print('Surface filled')
+                if waitForVolumeSet == True:
+                    displayAudioAdjustmentScreen()
+                if int(trialIndex) >=24:
+                    return
+                if stimuliPlayed == False:
+                    currentAnswer = 0
+                    audioFile = (trialDict[trialIndex]['stimFile'])
+                    pygame.mixer.music.load(audioFile)
+                    pygame.mixer.music.play(0)
+                    stimuliPlayed = True
+                    displayStimuli = False
+
+        if currentTime >= stimuliEndTime:
+            acceptAnswer = True
+            surface.fill(background_color)
+            pygame.display.update() # TEST disable this
             displayStimuli = False
             stimShow = False
-            # trialIndex = trialIndex + 1
 
 def createDictionary():
     global dictionaryloop, skippedErrors, totalErrors, data_dict, errorList,NamesCorrectAnswers, trialDict, incorrectAnswers, correctAnswers, stimsList, correctAnswerForString, femaleTotalErrors, maleTotalErrors
@@ -345,20 +454,19 @@ def createDictionary():
     global happyHighIntensityErrors, happyLowIntensityErrors, sadHighIntensityErrors, sadLowIntensityErrors, angryHighIntensityErrors, angryLowIntensityErrors, fearfulHighIntensityErrors, fearfulLowIntensityErrors
     global femaleHappyErrors, femaleSadErrors, femaleAngryErrors, femaleFearfulErrors
     global maleHappyErrors, maleSadErrors, maleAngryErrors, maleFearfulErrors, misattributedHappySad, misattributedHappyAngry, misattributedHappyFearful, misattributedSadHappy, misattributedSadAngry, misattributedSadFearful, misattributedAngryHappy, misattributedAngrySad, misattributedAngryFearful, misattributedFearfulHappy, misattributedFearfulSad, misattributedFearfulAngry
-    danvasubtest = 'Adult'
     data_dict = {}
     stimsList = {}
     incorrectAnswers = {}
     errorList = []
     NamesCorrectAnswers = {}
-    intensity = ''
-    gender = ''
     genderOfAnswer = ''
     intensityOfAnswer = ''
+    totalerrors = totalErrors
     
     for i in trialDict:
         # Let's do the basic things first:
         stimsList['stim' + str(dictionaryloop)] = (trialDict[dictionaryloop]['stimFile'])
+        
         if trialDict[dictionaryloop]['response'] == '0':
             skippedErrors = skippedErrors + 1
         
@@ -371,14 +479,15 @@ def createDictionary():
             correctAnswerForString = 'Angry '
         elif trialDict[dictionaryloop]['correctAnswer'] == '4':
             correctAnswerForString = 'Fearful '
+            
         # Now let's grab the intensity
         if  trialDict[dictionaryloop]['intensity'] == '1':
             intensityOfAnswer = 'Low '
-            
         elif trialDict[dictionaryloop]['intensity'] == '2':
             intensityOfAnswer = 'High '
         else:
             pass
+        
         # Now let's grab the gender:
         if  trialDict[dictionaryloop]['stimuliGender'] == '1':
             genderOfAnswer = 'Female'
@@ -386,6 +495,7 @@ def createDictionary():
             genderOfAnswer = 'Male'
         else:
             pass
+        
         # Now let's plug that into the PDF
         correctAnswers['correctAnswer'+ str(dictionaryloop)] = (correctAnswerForString) + (intensityOfAnswer) + (genderOfAnswer)
 
@@ -401,8 +511,6 @@ def createDictionary():
             else:
                 pass
             
-            
-            
             if  trialDict[dictionaryloop]['intensity'] == '1':
                 lowIntensityErrors = lowIntensityErrors + 1
             elif trialDict[dictionaryloop]['intensity'] == '2':
@@ -412,7 +520,6 @@ def createDictionary():
             
             if correctAnswerKey == '1':
                 happyErrors = happyErrors + 1
-                #correctAnswers['correctAnswer'+ str(dictionaryloop)] = 'Happy'
                 if  trialDict[dictionaryloop]['intensity'] == '1':
                     happyLowIntensityErrors = happyLowIntensityErrors + 1
                 elif trialDict[dictionaryloop]['intensity'] == '2':
@@ -428,6 +535,7 @@ def createDictionary():
                     misattributedHappyFearful = misattributedHappyFearful + 1
                 else:
                     pass
+                
                 if trialDict[dictionaryloop]['stimuliGender'] == '2':
                     maleHappyErrors = maleHappyErrors + 1
                 elif trialDict[dictionaryloop]['stimuliGender'] == '1':
@@ -509,7 +617,6 @@ def createDictionary():
                     femaleFearfulErrors = femaleFearfulErrors + 1
                 else:
                     pass
-                
             else:
                 pass
 
@@ -523,16 +630,15 @@ def createDictionary():
                 incorrectAnswers['incorrectAnswer'+ str(dictionaryloop)] = 'Fearful'
             else:
                 incorrectAnswers['incorrectAnswer'+ str(dictionaryloop)] = 'Skipped'
-        
         dictionaryloop = dictionaryloop + 1
 
 def createPDF():
     global dictionaryloop, dictionaryloop2, correctAnswers, age, participant, errorsByMisjudgement
+    totalerrors = totalErrors
     age = ageInput.get_value()
     participant = participantInput.get_value()
-    totalerrors = totalErrors
     errorsByMisjudgement = totalErrors - skippedErrors
-
+    
     totalErrors1 = totalerrors
     totalErrors2 = totalerrors
     happyErrors2 = happyErrors
@@ -544,9 +650,6 @@ def createPDF():
         data_dict [dictionarydefinitions[dictionaryloop2]] = (eval(dictionarydefinitions[dictionaryloop2]))
         dictionaryloop2 = dictionaryloop2 + 1
 
-
-    # data_dict.update(stimsList)
-    # data_dict.update(expInfo)
     data_dict.update(stimsList)
     data_dict.update(expInfo)
     data_dict.update(incorrectAnswers)
@@ -566,14 +669,10 @@ def createPDF():
 
     widthmisattributions = 378
     heightmisattributions = 20
-    errorsincrementmisattribute = widthmisattributions/18
-    misattributionerrorsincrement = widthmisattributions/18
+    misattributionerrorsincrement = widthmisattributions/6
 
     widthgendererrors = 378
     errorsincrementgender = widthgendererrors/24
-    gendererrorsincrement = widthgendererrors/24
-
-    shape = [(0, 0), (widthmain, heightmain)]
 
     happystartx = 0
     happyendx = (happyErrors * totalerrorsincrement)
@@ -602,12 +701,10 @@ def createPDF():
     angryerrorsrectangle.rectangle(angryrectangle, fill =angrycolor, outline=None)
     fearfulerrorsrectangle.rectangle(fearfulrectangle, fill =fearfulcolor, outline=None)
 
-    # totalerrorsgraph.show()
     totalerrorsgraph.save("src/graphPictures/totalerrorsgraph.jpg")
-    # totalerrorsgraph.show()
+
 
     #create picture for happy misattributions
-
     happystartx = 0
     happyendx = (0) # only since we're on the happy misattributions graph
     sadstartx = happyendx
@@ -634,7 +731,6 @@ def createPDF():
     angryErrorsrectangle.rectangle(angryrectangle, fill =angrycolor, outline=None)
     fearfulErrorsrectangle.rectangle(fearfulrectangle, fill =fearfulcolor, outline=None)
 
-    # happyMisattributionsGraph.show()
     happyMisattributionsGraph.save("src/graphPictures/happyMisattributions.jpg")
 
     happystartx = 0
@@ -650,7 +746,6 @@ def createPDF():
     angryrectangle = [(angrystartx,0), (angryendx, heightmisattributions)]
     fearfulrectangle = [(fearfulstartx,0), (fearfulendx,heightmisattributions)]
 
-
     # creating new Image object
     sadMisattributionsGraph = Image.new("RGB", (widthmisattributions, heightmisattributions),color = "#FFFFFF")
 
@@ -663,7 +758,6 @@ def createPDF():
     angryErrorsrectangle.rectangle(angryrectangle, fill =angrycolor, outline=None)
     fearfulErrorsrectangle.rectangle(fearfulrectangle, fill =fearfulcolor, outline=None)
 
-    # sadMisattributionsGraph.show()
     sadMisattributionsGraph.save("src/graphPictures/sadMisattributions.jpg")
 
     happystartx = 0
@@ -692,7 +786,6 @@ def createPDF():
     sadErrorsrectangle.rectangle(sadrectangle, fill =sadcolor, outline=None)
     fearfulErrorsrectangle.rectangle(fearfulrectangle, fill =fearfulcolor, outline=None)
 
-    # angryMisattributionsGraph.show()
     angryMisattributionsGraph.save("src/graphPictures/angryMisattributions.jpg")
 
     happystartx = 0
@@ -719,7 +812,7 @@ def createPDF():
     sadErrorsrectangle.rectangle(sadrectangle, fill =sadcolor, outline=None) 
     angryErrorsrectangle.rectangle(angryrectangle, fill =angrycolor, outline=None) 
     fearfulMisattributionsGraph.save("src/graphPictures/fearfulMisattributions.jpg")
-    # fearfulMisattributionsGraph.show()
+
     # Gender Errors Graph
     malestartx = 0
     maleendx = malestartx + (maleTotalErrors * errorsincrementgender) 
@@ -727,6 +820,7 @@ def createPDF():
     femaleendx = femalestartx + (femaleTotalErrors * errorsincrementgender)
     malerectangle = [(0, 0), (maleendx , heightmisattributions)]
     femalerectangle = [(femalestartx,0),(femaleendx,heightmisattributions) ]
+    
     # creating new Image object
     genderErrorsGraph = Image.new("RGB", (widthgendererrors, heightmisattributions),color = "#FFFFFF")
     # create rectangle image for happy Errors
@@ -734,21 +828,14 @@ def createPDF():
     femaleTotalErrorsrectangle = ImageDraw.Draw(genderErrorsGraph)
     maleTotalErrorsrectangle.rectangle(malerectangle, fill =malecolor, outline=None)
     femaleTotalErrorsrectangle.rectangle(femalerectangle, fill =femalecolor, outline=None)
-    # genderErrorsGraph.show()
     genderErrorsGraph.save("src/graphPictures/errorsbygender.jpg")
 
-
-
-    # data_dict
     # Now let's insert the images
 
     fillpdfs.place_image('src/graphPictures/totalerrorsgraph.jpg', 124, 769, 'src/pdfMagic/blankDocumentNumberLine.pdf', 'src/pdfMagic/completed.pdf', 1, width=636, height=165)
 
-    # These were the values before changing to the document with the number lines
-    page2GraphStart = 120
-    # page2GraphWidth = 283
-    # page2GraphHeight = 15
 
+    page2GraphStart = 120
     happygraphstarty = 161
     #The following are for the other graphs
     fillpdfs.place_image('src/graphPictures/happyMisattributions.jpg', page2GraphStart, happygraphstarty, 'src/pdfMagic/completed.pdf', 'src/pdfMagic/completed1.pdf', 2, width=widthmisattributions, height=heightmisattributions)
@@ -757,49 +844,48 @@ def createPDF():
     fillpdfs.place_image('src/graphPictures/fearfulMisattributions.jpg', page2GraphStart, happygraphstarty-126, 'src/pdfMagic/completed3.pdf', 'src/pdfMagic/completed4.pdf', 2, width=widthmisattributions, height=heightmisattributions)
     fillpdfs.place_image('src/graphPictures/errorsbygender.jpg',page2GraphStart, happygraphstarty-238, 'src/pdfMagic/completed4.pdf', 'src/pdfMagic/completed.pdf', 2, width=widthmisattributions, height=heightmisattributions)
 
-    fillpdfs.write_fillable_pdf('src/pdfMagic/completed.pdf', ('reports/'+participant+expInfo['date']+'completed.pdf'), data_dict, flatten=False) # was fillpdfs.write_fillable_pdf('src/pdfMagic/completed.pdf', 'reports/completed.pdf', data_dict, flatten=False)
+    fillpdfs.write_fillable_pdf('src/pdfMagic/completed.pdf', ('reports/'+expInfo['date']+participant+danvasubtest+'.pdf'), data_dict, flatten=False) # was fillpdfs.write_fillable_pdf('src/pdfMagic/completed.pdf', 'reports/completed.pdf', data_dict, flatten=False)
 
 
-    # for some reason I am not having luck directly openint the file, and some coding other than the most obvious seems necesary
+    # for some reason I am not having luck directly opening the file, and some coding other than the most obvious seems necesary
 
     cur_path = os.path.dirname(__file__)
-    new_path = os.path.relpath('reports/'+participant+expInfo['date']+'completed.pdf', cur_path)
+    new_path = os.path.relpath('reports/'+expInfo['date']+participant+danvasubtest+'.pdf', cur_path)
     os.startfile(new_path)
 
-def selectTest(value, test):
-    # Do the job here !
-    print(value)
-    print(test)
-
 def mainMenuState():#(state)
-    global mainMenuShow, showInstructions
-    print('mainMenyState')
-    # if state == 0:
-    mainMenuShow = False
+    global displayMainMenu, showInstructions
+    displayMainMenu = False
     showInstructions = True
     displayInstructions()
 
 width, height = surface.get_size()
-# mainMenuShow = False
 
 menu = pygame_menu.Menu('Welcome to the DANVA II test, please enter your information below', width - menuPadding, height - menuPadding,
                     theme=pygame_menu.themes.THEME_BLUE)
 
-session = menu.add.text_input('Session :  ', default='001', onchange=print('this'))
+session = menu.add.text_input('Session :  ', default='001')
 participantInput = menu.add.text_input('Participant :  ', default='')
 participant = participantInput.get_value() # put this in the pdf function
-ageInput = menu.add.text_input('Age :    ', default='', onchange=print('this'))
-#age = ageInput.get_value()
+ageInput = menu.add.text_input('Age :    ', default='')
+age = ageInput.get_value()
 
+def printSelected (value: Tuple[str,int], index = str):
+    global file, dictIndex
+    test = (value[0])
+    testIndex = (test[1])
+    dictIndex = 0
+    testConditions(testIndex)
 
 testSelector = menu.add.dropselect(
+    onchange=(printSelected),
     title='Select Test',
-    items=[('Adult', 1),
-        ('African American', 2),
-        ('Paralanguage', 3),
-        ('Child', 4),
+    items=[('Adult Faces', 0),
+        ('Adult Postures', 1),
+        ('Child Faces', 2),
+        ('Adult Voices', 3),
+        ('Child Voices', 4)
         ],
-    # font_size=20,
     default=0,
     open_middle=False,  # Opens in the middle of the menu
     selection_box_height=10,
@@ -809,61 +895,73 @@ testSelector = menu.add.dropselect(
 )
 menu.add.button('Play', mainMenuState)
 menu.add.button('Quit', pygame_menu.events.EXIT)
-# menu.mainloop(surface)
-
 
 while run:
-    events = [pygame.event.wait()]
+    pygame.event.set_blocked(pygame.WINDOWCLOSE)
+    pygame.event.set_blocked(pygame.WINDOWENTER)
+    pygame.event.set_blocked(pygame.WINDOWEXPOSED)
+    pygame.event.set_blocked(pygame.WINDOWLEAVE)
+    pygame.event.set_blocked(pygame.ACTIVEEVENT)
+    pygame.event.set_blocked(pygame.WINDOWFOCUSGAINED)
+    pygame.event.set_blocked(pygame.CLIPBOARDUPDATE)
+    pygame.event.set_blocked(pygame.VIDEOEXPOSE)
+    pygame.event.set_blocked(pygame.WINDOWFOCUSLOST)
+    pygame.event.set_blocked(pygame.TEXTEDITING)  #  TEST ONLY!  
+    pygame.event.set_blocked(pygame.AUDIODEVICEADDED)
+    pygame.event.set_blocked(pygame.MOUSEMOTION)
+    events = pygame.event.get() #pygame.event.wait()
     for event in events:
         if event.type == pygame.QUIT:
-            pygame.quit()
-            run = False
-            quit()
+            running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                for i, rect in enumerate(button_rects):
+                    if rect.collidepoint(event.pos):
+                        print('Clicked number', i)
+                        handleClickedButton(i)
+                        break
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                print("escape pressed")
                 pygame.quit()
                 run = False
                 quit()
-        if event.type == pygame.VIDEORESIZE:
-            # There's some code to add back window content here.
-            surface = pygame.display.set_mode((event.w, event.h),
-                                            pygame.RESIZABLE)
-            print(surface)
-            print (surface.get_size())
-            x, y = surface.get_size()
-            surface.fill((200, 200, 200))
-            pygame.display.flip()
-    
+    # events = [events]
 
-    surface.fill((200, 200, 200))
-    if mainMenuShow == True:
+    #surface.fill((200, 200, 200))
+    if displayMainMenu == True:
         menu.update(events)
         menu.draw(surface)  
-        displayUpdate()  
+        # displayUpdate()  
         pygame.display.update()
-        pygame.display.flip()
-    if showInstructions == False and mainMenuShow == False: 
-        print('Showing instructions')
+        # pygame.display.flip() # TEST REMOVE THIS
+    if showInstructions == False and displayMainMenu == False: 
         displayInstructions()
     if showInstructions == True:
-        drawButtons()
+        
+        #drawButtons()
+        pass
     if displayStimuli == True:
-        surface.fill((200, 200, 200))
-        displayUpdate()  
+        present_stimuli()
+        # acceptAnswer = False
+    if pygame.mixer.music.get_busy() == True:
+        acceptAnswer = False
+        # displayX, displayY
+        textbox = ((displayX/2 - 100 ),(displayY/2 - 100 ),(displayX/2 + 100 ),(displayY/2 + 100 ))
+        message = "Now Playing #" + str(trialIndex + 1)
+        drawText(surface, message, black, textbox, my_font)
+        # pygame.display.flip()
+        audioStarted = True
+        stimuliPlayed = False
+        displayStimuli = False
         pygame.display.update()
-        pygame.display.flip()
-        drawButtons()
-        stimuliStart = pygame.time.get_ticks()
-        displayTime = 2
-        stimuliEndTime = stimuliStart + (displayTime * 1000)
-        currentTime = pygame.time.get_ticks()
-        display_stimuli(displayTime,stimuliStart,stimuliEndTime,currentTime)
-
-          
-    # events = pygame.event.get()
-    # pygame_widgets.update(events)  # Call once every loop to allow widgets to render and listen
-    # pygame.display.update()
+    # if pygame.mixer.music.get_busy() == False:
+    #     pygame.display.flip()
+    if pygame.mixer.music.get_busy() == False and audioStarted == True:
+        surface.fill((200, 200, 200))
+        acceptAnswer = True
+        pass
+    if display_buttons == True:
+        draw_buttons()
     displayUpdate()
     clock.tick(30)
     if trialIndex >= len(trialDict):
@@ -871,4 +969,3 @@ while run:
         createPDF()
         run = False
         pygame.quit()
-        
