@@ -633,7 +633,8 @@ def createDictionary():
         dictionaryloop = dictionaryloop + 1
 
 def createPDF():
-    global dictionaryloop, dictionaryloop2, correctAnswers, age, participant, errorsByMisjudgement
+    global dictionaryloop, dictionaryloop2, correctAnswers, age, participant, errorsByMisjudgement, session, sessionInput
+    print(session)
     totalerrors = totalErrors
     age = ageInput.get_value()
     participant = participantInput.get_value()
@@ -855,7 +856,18 @@ def createPDF():
     participant = participant.replace('\\', '_')
     participant = participant.replace('"', '_')
     participant = participant.replace("'", '_')
-    fillpdfs.write_fillable_pdf('src/pdfMagic/completed.pdf', ('reports/'+expInfo['date']+participant+danvasubtest+'.pdf'), data_dict, flatten=False) # was fillpdfs.write_fillable_pdf('src/pdfMagic/completed.pdf', 'reports/completed.pdf', data_dict, flatten=False)
+    session = session.replace(' ', '_')  # Replace spaces with underscores
+    session = session.replace('/', '_')  # Replace slashes with underscores
+    session = session.replace(':', '_')  # Replace colons with underscores
+    session = session.replace('?', '_')  # Replace question marks with underscores
+    session = session.replace('<', '_')
+    session = session.replace('>', '_')
+    session = session.replace('*', '_')
+    session = session.replace('|', '_')
+    session = session.replace('\\', '_')
+    session = session.replace('"', '_')
+    session = session.replace("'", '_')
+    fillpdfs.write_fillable_pdf('src/pdfMagic/completed.pdf', ('reports/'+expInfo['date']+participant+danvasubtest+'-session'+session+'.pdf'), data_dict, flatten=False) # was fillpdfs.write_fillable_pdf('src/pdfMagic/completed.pdf', 'reports/completed.pdf', data_dict, flatten=False)
 
 
 
@@ -863,7 +875,7 @@ def createPDF():
     # for some reason I am not having luck directly opening the file, and some coding other than the most obvious seems necesary
 
     cur_path = os.path.dirname(__file__)
-    new_path = os.path.relpath('reports/'+expInfo['date']+participant+danvasubtest+'.pdf', cur_path)
+    new_path = os.path.relpath('reports/'+expInfo['date']+participant+danvasubtest+'-session'+session+'.pdf', cur_path)
     os.startfile(new_path)
 
 def mainMenuState():#(state)
@@ -877,7 +889,8 @@ width, height = surface.get_size()
 menu = pygame_menu.Menu('Welcome to the DANVA II test, please enter your information below', width - menuPadding, height - menuPadding,
                     theme=pygame_menu.themes.THEME_BLUE)
 
-session = menu.add.text_input('Session :  ', default='001')
+sessionInput = menu.add.text_input('Session :  ', default='001')
+session= sessionInput.get_value()
 participantInput = menu.add.text_input('Participant :  ', default='')
 participant = participantInput.get_value() # put this in the pdf function
 ageInput = menu.add.text_input('Age :    ', default='')
@@ -938,6 +951,8 @@ while run:
                 pygame.quit()
                 run = False
                 quit()
+
+                
     # events = [events]
 
     #surface.fill((200, 200, 200))
