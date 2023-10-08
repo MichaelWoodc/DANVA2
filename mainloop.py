@@ -843,10 +843,23 @@ def createPDF():
     fillpdfs.place_image('src/graphPictures/angryMisattributions.jpg', page2GraphStart, happygraphstarty-85, 'src/pdfMagic/completed2.pdf', 'src/pdfMagic/completed3.pdf', 2, width=widthmisattributions, height=heightmisattributions)
     fillpdfs.place_image('src/graphPictures/fearfulMisattributions.jpg', page2GraphStart, happygraphstarty-126, 'src/pdfMagic/completed3.pdf', 'src/pdfMagic/completed4.pdf', 2, width=widthmisattributions, height=heightmisattributions)
     fillpdfs.place_image('src/graphPictures/errorsbygender.jpg',page2GraphStart, happygraphstarty-238, 'src/pdfMagic/completed4.pdf', 'src/pdfMagic/completed.pdf', 2, width=widthmisattributions, height=heightmisattributions)
-
+    #We need to remove invalid characters from the file name string:  / ? < > \ : * | " 
+    participant = participant.replace(' ', '_')  # Replace spaces with underscores
+    participant = participant.replace('/', '_')  # Replace slashes with underscores
+    participant = participant.replace(':', '_')  # Replace colons with underscores
+    participant = participant.replace('?', '_')  # Replace question marks with underscores
+    participant = participant.replace('<', '_')
+    participant = participant.replace('>', '_')
+    participant = participant.replace('*', '_')
+    participant = participant.replace('|', '_')
+    participant = participant.replace('\\', '_')
+    participant = participant.replace('"', '_')
+    participant = participant.replace("'", '_')
     fillpdfs.write_fillable_pdf('src/pdfMagic/completed.pdf', ('reports/'+expInfo['date']+participant+danvasubtest+'.pdf'), data_dict, flatten=False) # was fillpdfs.write_fillable_pdf('src/pdfMagic/completed.pdf', 'reports/completed.pdf', data_dict, flatten=False)
 
 
+
+    
     # for some reason I am not having luck directly opening the file, and some coding other than the most obvious seems necesary
 
     cur_path = os.path.dirname(__file__)
