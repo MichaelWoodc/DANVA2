@@ -6,7 +6,16 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 from fillpdf import fillpdfs
 from typing import Tuple
+import re
 
+
+gender_height_misattributions_adjustment = 4
+height_misattributions_adjustment = 4
+gender_addition = 177
+page2GraphStart = 209       # Moved to outside function for easier debugging
+happygraphstarty = 513     # Moved to outside function for easier debugging
+widthmisattributions = 284
+heightmisattributions = 14
 
 expInfo = {}
 expInfo['date'] = time.strftime(("%Y_%m_%d-%H_%M"))
@@ -114,7 +123,7 @@ dictionaryloop = 0
 dictionaryloop2 = 0
 
 stimuliStart = 0
-displayTime = 2
+displayTime = 2  # NOTE: Not sure if this is what I changed
 stimuliEndTime = 1
 # This is to set the number of the trial for scoring the right data
 
@@ -133,6 +142,16 @@ dictionarydefinitions = ["participant","age","skippedErrors","totalErrors","tota
 
 
 file = ('src/stimFiles/adult.csv')
+
+def sanitize_filename(filename):
+    # Define a regular expression pattern to match illegal characters
+    illegal_chars_pattern = r'[<>:"/\\|?*\x00-\x1F\x7F-\x9F]'  # Windows illegal characters
+    
+    # Replace illegal characters with underscores
+    sanitized_filename = re.sub(illegal_chars_pattern, '_', filename)
+    
+    return sanitized_filename
+
 def testConditions(testIndex):
     global dictIndex, file, danvasubtest
     if testIndex == 0:
@@ -196,18 +215,43 @@ def drawText(surface, text, color, rect, font, aa=False, bkg=None):
     return text
 
 def displayCredits():
+    
+    creditsStartTime = pygame.time.get_ticks()
+    creditsEndTime = creditsStartTime + (3 * 1000)
     surface.fill(background_color)
     textbox = ((surfaceRectangle[0]+padding),(surfaceRectangle[1]+textTopPadding),(surfaceRectangle[2]-padding*2),(surfaceRectangle[2]-padding))
     credits = "Program Development by: Michael Woodcock & Dr. Virginia Wickline, 2023 Georgia Southern University"
     drawText(surface, credits, black, textbox, my_font)
     pygame.display.flip()
-    time.sleep(3)
-    
+    while pygame.time.get_ticks() < creditsEndTime:
+        clock.tick(30)
+
+        # pygame.display.flip()
+        # pygame.display.update()
+        # pass
+        # surface.fill(background_color)
+        # textbox = ((surfaceRectangle[0]+padding),(surfaceRectangle[1]+textTopPadding),(surfaceRectangle[2]-padding*2),(surfaceRectangle[2]-padding))
+        # credits = "Program Development by: Michael Woodcock & Dr. Virginia Wickline, 2023 Georgia Southern University"
+        # drawText(surface, credits, black, textbox, my_font)
+        # pygame.display.flip()
+
+    creditsStartTime = pygame.time.get_ticks()
+    creditsEndTime = creditsStartTime + (3 * 1000)
     surface.fill(background_color)
     credits2 = "Danva Stimuli used with permission from: Steve Nowicki, Emory University (see Nowicki & Carton, 1994)"
     drawText(surface, credits2, black, textbox, my_font)
     pygame.display.update()
-    time.sleep(3)
+    pygame.display.flip()
+    while pygame.time.get_ticks() < creditsEndTime:
+        clock.tick(30)
+        # pygame.display.update()
+        # pygame.display.flip()
+
+    # surface.fill(background_color)
+    # credits2 = "Danva Stimuli used with permission from: Steve Nowicki, Emory University (see Nowicki & Carton, 1994)"
+    # drawText(surface, credits2, black, textbox, my_font)
+    # pygame.display.update()
+    # time.sleep(3)
 
 displayCredits()
 
@@ -634,6 +678,7 @@ def createDictionary():
 
 def createPDF():
     global dictionaryloop, dictionaryloop2, correctAnswers, age, participant, errorsByMisjudgement
+    dictionaryloop2 = 0
     totalerrors = totalErrors
     age = ageInput.get_value()
     participant = participantInput.get_value()
@@ -667,8 +712,8 @@ def createPDF():
 
     totalerrorsincrement = widthmain/24
 
-    widthmisattributions = 378
-    heightmisattributions = 20
+    # widthmisattributions = 378  ## NOTE: Moved these to beginning of program for easier edits
+    # heightmisattributions = 20
     misattributionerrorsincrement = widthmisattributions/6
 
     widthgendererrors = 378
@@ -818,11 +863,11 @@ def createPDF():
     maleendx = malestartx + (maleTotalErrors * errorsincrementgender) 
     femalestartx = maleendx
     femaleendx = femalestartx + (femaleTotalErrors * errorsincrementgender)
-    malerectangle = [(0, 0), (maleendx , heightmisattributions)]
-    femalerectangle = [(femalestartx,0),(femaleendx,heightmisattributions) ]
+    malerectangle = [(0, 0), (maleendx , heightmisattributions+ height_misattributions_adjustment)]
+    femalerectangle = [(femalestartx,0),(femaleendx,heightmisattributions+ height_misattributions_adjustment) ]
     
     # creating new Image object
-    genderErrorsGraph = Image.new("RGB", (widthgendererrors, heightmisattributions),color = "#FFFFFF")
+    genderErrorsGraph = Image.new("RGB", (widthgendererrors, heightmisattributions+ height_misattributions_adjustment),color = "#FFFFFF")
     # create rectangle image for happy Errors
     maleTotalErrorsrectangle = ImageDraw.Draw(genderErrorsGraph)
     femaleTotalErrorsrectangle = ImageDraw.Draw(genderErrorsGraph)
@@ -832,32 +877,61 @@ def createPDF():
 
     # Now let's insert the images
 
-    fillpdfs.place_image('src/graphPictures/totalerrorsgraph.jpg', 124, 769, 'src/pdfMagic/blankDocumentNumberLine.pdf', 'src/pdfMagic/completed.pdf', 1, width=636, height=165)
+    fillpdfs.place_image('src/graphPictures/totalerrorsgraph.jpg', 68, 115, 'src/pdfMagic/blankDocumentNumberLine.pdf', 'src/pdfMagic/completed.pdf', 1, width=475, height=100)
 
 
-    page2GraphStart = 120
-    happygraphstarty = 161
+    # page2GraphStart = 120       # Moved to outside function for easier debugging
+    # happygraphstarty = -161     # Moved to outside function for easier debugging
     #The following are for the other graphs
     fillpdfs.place_image('src/graphPictures/happyMisattributions.jpg', page2GraphStart, happygraphstarty, 'src/pdfMagic/completed.pdf', 'src/pdfMagic/completed1.pdf', 2, width=widthmisattributions, height=heightmisattributions)
-    fillpdfs.place_image('src/graphPictures/sadMisattributions.jpg', page2GraphStart, happygraphstarty-43, 'src/pdfMagic/completed1.pdf', 'src/pdfMagic/completed2.pdf', 2, width=widthmisattributions, height=heightmisattributions)
-    fillpdfs.place_image('src/graphPictures/angryMisattributions.jpg', page2GraphStart, happygraphstarty-85, 'src/pdfMagic/completed2.pdf', 'src/pdfMagic/completed3.pdf', 2, width=widthmisattributions, height=heightmisattributions)
-    fillpdfs.place_image('src/graphPictures/fearfulMisattributions.jpg', page2GraphStart, happygraphstarty-126, 'src/pdfMagic/completed3.pdf', 'src/pdfMagic/completed4.pdf', 2, width=widthmisattributions, height=heightmisattributions)
-    fillpdfs.place_image('src/graphPictures/errorsbygender.jpg',page2GraphStart, happygraphstarty-238, 'src/pdfMagic/completed4.pdf', 'src/pdfMagic/completed.pdf', 2, width=widthmisattributions, height=heightmisattributions)
+    fillpdfs.place_image('src/graphPictures/sadMisattributions.jpg', page2GraphStart, happygraphstarty+32, 'src/pdfMagic/completed1.pdf', 'src/pdfMagic/completed2.pdf', 2, width=widthmisattributions, height=heightmisattributions)
+    fillpdfs.place_image('src/graphPictures/angryMisattributions.jpg', page2GraphStart, happygraphstarty+63, 'src/pdfMagic/completed2.pdf', 'src/pdfMagic/completed3.pdf', 2, width=widthmisattributions, height=heightmisattributions)
+    fillpdfs.place_image('src/graphPictures/fearfulMisattributions.jpg', page2GraphStart, happygraphstarty+95, 'src/pdfMagic/completed3.pdf', 'src/pdfMagic/completed4.pdf', 2, width=widthmisattributions, height=heightmisattributions)
+    fillpdfs.place_image('src/graphPictures/errorsbygender.jpg',page2GraphStart, happygraphstarty+gender_addition, 'src/pdfMagic/completed4.pdf', 'src/pdfMagic/completed.pdf', 2, width=widthmisattributions, height=heightmisattributions+gender_height_misattributions_adjustment)
+    filename = expInfo['date'] + participant + danvasubtest + '.pdf'
+    sanitized_filename = sanitize_filename(filename)
+    filepath = 'reports/'+sanitized_filename
 
-    fillpdfs.write_fillable_pdf('src/pdfMagic/completed.pdf', ('reports/'+expInfo['date']+participant+danvasubtest+'.pdf'), data_dict, flatten=False) # was fillpdfs.write_fillable_pdf('src/pdfMagic/completed.pdf', 'reports/completed.pdf', data_dict, flatten=False)
+    fillpdfs.write_fillable_pdf('src/pdfMagic/completed.pdf', (filepath), data_dict, flatten=False) # was fillpdfs.write_fillable_pdf('src/pdfMagic/completed.pdf', 'reports/completed.pdf', data_dict, flatten=False)
 
 
     # for some reason I am not having luck directly opening the file, and some coding other than the most obvious seems necesary
+    # NOTE: Change this back if encountering errors
+    # cur_path = os.path.dirname(__file__)
+    cur_path = os.getcwd()
+    print('current path',cur_path)
 
-    cur_path = os.path.dirname(__file__)
-    new_path = os.path.relpath('reports/'+expInfo['date']+participant+danvasubtest+'.pdf', cur_path)
-    os.startfile(new_path)
+    new_path = os.path.relpath(filepath, cur_path)
+    print('new path',new_path)
+    openAttempts = 0
+    number_of_allowed_attempts = 1000
+    while True:
+        print('Attempt:',openAttempts)
+        try:
+            os.startfile(new_path)
+            break
+        except:
+            openAttempts += 1
+            
+        if openAttempts > number_of_allowed_attempts:
+            break
+        
 
 def mainMenuState():#(state)
     global displayMainMenu, showInstructions
     displayMainMenu = False
     showInstructions = True
     displayInstructions()
+
+
+def viewPreviousReports():
+    # Minimize the pygame window
+    print('Your main window has been minimized, please re-open it from task bar to return to the program.')
+    pygame.display.iconify()
+    # Open the 'reports' folder in the current working directory
+    folder_to_open = os.path.join(os.getcwd(), 'reports')
+    os.startfile(folder_to_open)
+
 
 width, height = surface.get_size()
 
@@ -893,22 +967,23 @@ testSelector = menu.add.dropselect(
     selection_infinite=True,
 
 )
-menu.add.button('Play', mainMenuState)
+menu.add.button('Start', mainMenuState)
+menu.add.button('View Previous Reports', viewPreviousReports)
 menu.add.button('Quit', pygame_menu.events.EXIT)
-
+pygame.event.set_blocked(pygame.WINDOWCLOSE)
+pygame.event.set_blocked(pygame.WINDOWENTER)
+pygame.event.set_blocked(pygame.WINDOWEXPOSED)
+pygame.event.set_blocked(pygame.WINDOWLEAVE)
+pygame.event.set_blocked(pygame.ACTIVEEVENT)
+pygame.event.set_blocked(pygame.WINDOWFOCUSGAINED)
+pygame.event.set_blocked(pygame.CLIPBOARDUPDATE)
+pygame.event.set_blocked(pygame.VIDEOEXPOSE)
+pygame.event.set_blocked(pygame.WINDOWFOCUSLOST)
+pygame.event.set_blocked(pygame.TEXTEDITING)  #  TEST ONLY!  
+pygame.event.set_blocked(pygame.AUDIODEVICEADDED)
+pygame.event.set_blocked(pygame.MOUSEMOTION)
 while run:
-    pygame.event.set_blocked(pygame.WINDOWCLOSE)
-    pygame.event.set_blocked(pygame.WINDOWENTER)
-    pygame.event.set_blocked(pygame.WINDOWEXPOSED)
-    pygame.event.set_blocked(pygame.WINDOWLEAVE)
-    pygame.event.set_blocked(pygame.ACTIVEEVENT)
-    pygame.event.set_blocked(pygame.WINDOWFOCUSGAINED)
-    pygame.event.set_blocked(pygame.CLIPBOARDUPDATE)
-    pygame.event.set_blocked(pygame.VIDEOEXPOSE)
-    pygame.event.set_blocked(pygame.WINDOWFOCUSLOST)
-    pygame.event.set_blocked(pygame.TEXTEDITING)  #  TEST ONLY!  
-    pygame.event.set_blocked(pygame.AUDIODEVICEADDED)
-    pygame.event.set_blocked(pygame.MOUSEMOTION)
+
     events = pygame.event.get() #pygame.event.wait()
     for event in events:
         if event.type == pygame.QUIT:
@@ -967,5 +1042,16 @@ while run:
     if trialIndex >= len(trialDict):
         createDictionary()
         createPDF()
-        run = False
+        # run = False
+        # pygame.display.iconify()
+        trialIndex = 0
+        displayMainMenu = True
+        displayStimuli = False
+        display_buttons = False
+        # mainMenuState()
+        # pygame.display.flip() # TEST REMOVE THIS
+        showInstructions = True
+        pygame.display.quit()
         pygame.quit()
+        time.sleep(3.0)
+        break
